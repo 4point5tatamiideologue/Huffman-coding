@@ -1,3 +1,5 @@
+#define WINDOWS
+
 #include <fstream>
 #include <string>
 #include <iostream>
@@ -5,6 +7,7 @@
 #include <queue>
 #include <stdio.h>
 #include <math.h>
+#include <algorithm>
 using namespace std;
 
 
@@ -66,10 +69,9 @@ string Code(Node* node, Node* root, string codeString = "") {
 
 
 int main() {
-
 	// read the input file and store relative frequencies and
 	// symbols in a vector of pairs, with probability in the first place
-	ifstream inputFile("input.txt");
+	ifstream inputFile("../test/input.txt");
 	string symbolString;
 	string frequencyString;
 	vector<pair<float, char>> input;
@@ -194,12 +196,10 @@ int main() {
 	for (int i = 0; i < input.size(); i++) {
 		float probability = input[i].first;
 		int codewordLength = output[i].second.length();
-		// formula (2) in the paper
 		expectedCodewordLength += probability * codewordLength;
 	}
 	for (int i = 0; i < input.size(); i++) {
 		float probability = input[i].first;
-		// formula (3) in the paper
 		entropy += probability * log2(1 / probability);
 	}
 	int fixedCodewordLength = ceil(log2(input.size()));
@@ -209,7 +209,6 @@ int main() {
 		<< entropy << ".\n";
 	cout << "A fixed-length code would have codeword lengths of "
 		<< fixedCodewordLength << ".\n";
-
 	return 0;
 
 }
