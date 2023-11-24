@@ -31,6 +31,7 @@ struct InternalNode : Node {
 };
 
 // Given a vector consisting of (weight, symbol) pairs, sorted by weight, builds a Huffman tree and returns a pointer to the root.
+// destroy_huffman_tree() should be called if the tree will no longer be used.
 Node* build_huffman_tree(std::vector<std::pair<float, char>> sorted_input) {
 	// For each symbol, create a leaf node.
 	std::vector<LeafNode*> leaf_nodes(sorted_input.size());
@@ -100,6 +101,15 @@ Node* build_huffman_tree(std::vector<std::pair<float, char>> sorted_input) {
 	return queue2.front(); // This is the root.
 }
 
+void destroy_huffman_tree(Node* root) {
+	if (root == NULL) {
+		return;
+	}
+	destroy_huffman_tree(root->left_child);
+	destroy_huffman_tree(root->right_child);
+	delete(root);
+}
+
 void build_code_map_helper(Node* node, std::string codeword, std::map<char, std::string> &code_map) {
 	if (node == NULL) {
 		return;
@@ -145,6 +155,7 @@ int main() {
 
 	Node* root = build_huffman_tree(input);
 	std::map<char, std::string> code_map = build_code_map(root);
+	destroy_huffman_tree(root);
 
 	// Sort the input elements by lexicographic order for cleaner output.
 	sort(input.begin(), input.end(), compare_symbol);
