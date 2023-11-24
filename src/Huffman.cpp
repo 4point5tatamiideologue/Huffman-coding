@@ -137,65 +137,40 @@ bool compare_symbol(std::pair<float, char> pair1, std::pair<float, char> pair2) 
 
 int main() {
 	// Read the input file and store relative frequencies and symbols in a vector of pairs.
-	std::ifstream input_file("../test/input.txt");
-	std::string symbol_string;
-	std::string weight_string;
-	std::vector<std::pair<float, char>> input;
+	std::ifstream input_file("../test/input_text.txt");
+	char symbol;
+	std::map<char, int> frequencies;
+	int character_count;
 	while (!input_file.eof()) {
-		getline(input_file, symbol_string, ';');
-		getline(input_file, weight_string, '\n');
-		char symbol = symbol_string[0];
-		float weight = stof(weight_string);
-		input.push_back({ weight, symbol });
+		input_file.get(symbol);
+		frequencies[symbol]++;
+		character_count++;
 	}
 	input_file.close();
 
-	// Sort pairs by weight.
-	std::sort(input.begin(), input.end());
+	std::vector<std::pair<float, char>> symbols_sorted_by_weight;
+	for (auto const& [symbol, frequency] : frequencies) {
+		symbols_sorted_by_weight.push_back(std::make_pair((float) frequency / character_count, symbol));
+	}
 
-	Node* root = build_huffman_tree(input);
+	// Sort pairs by frequency.
+	std::sort(symbols_sorted_by_weight.begin(), symbols_sorted_by_weight.end());
+
+	Node* root = build_huffman_tree(symbols_sorted_by_weight);
 	std::map<char, std::string> code_map = build_code_map(root);
 	destroy_huffman_tree(root);
 
-	// Sort the input elements by lexicographic order for cleaner output.
-	sort(input.begin(), input.end(), compare_symbol);
-
 	// Encode each symbol.
-	std::vector<std::pair<char, std::string>> output(input.size());
-	for (int i = 0; i < input.size(); i++) {
-		char symbol = input[i].second;
-		output[i] = make_pair(symbol, code_map[symbol]);
-	}
-
-	// Save the output in a file.
+	std::ifstream input_file2("../test/input_text.txt");
 	std::ofstream output_file("output.txt");
-	for (int i = 0; i < output.size(); i++) {
-		char symbol = output[i].first;
-		std::string codeword = output[i].second;
-		output_file << symbol << ";" << codeword << "\n";
+	std::string codeword;
+	while (!input_file2.eof()) {
+		input_file2.get(symbol);
+		codeword = code_map[symbol];
+		output_file << codeword;
 	}
+	input_file2.close();
 	output_file.close();
-	std::cout << "The code has been saved in file \"output.txt\".\n";
-
-	// Evaluate the performance.
-	float expected_codeword_length = 0;
-	float entropy = 0;
-	for (int i = 0; i < input.size(); i++) {
-		float weight = input[i].first;
-		int codeword_length = output[i].second.length();
-		expected_codeword_length += weight * codeword_length;
-	}
-	for (int i = 0; i < input.size(); i++) {
-		float weight = input[i].first;
-		entropy += weight * log2(1 / weight);
-	}
-	int fixed_codeword_length = ceil(log2(input.size()));
-	std::cout << "The expected codeword length is "
-		<< expected_codeword_length << ".\n";
-	std::cout << "The entropy of the source is "
-		<< entropy << ".\n";
-	std::cout << "A fixed-length code would have codeword lengths of "
-		<< fixed_codeword_length << ".\n";
-	return 0;
+	std::cout << "The compressed file has been saved in \"output.txt\".\n";
 
 }
