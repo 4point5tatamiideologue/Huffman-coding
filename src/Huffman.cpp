@@ -30,6 +30,33 @@ struct InternalNode : Node {
 	}
 };
 
+struct OutputBuffer {
+    std::ofstream file;
+    char buffer = 0;
+    char count = 0;
+
+    void write_bit(char bit) {
+         buffer <<= 1;
+         if (bit) {
+			buffer |= 1;
+		 }	
+         count++;
+         if (count == 8) {
+             file << buffer;
+             buffer = 0;
+             count = 0;
+         }
+    }
+
+	void dump_buffer() {
+		buffer <<= 8 - count; // Left shift buffer so that the unused bits are at the end.
+		buffer |= 1 << (7 - count); // Set the first of the unused bits to 1.
+		file << buffer;
+		buffer = 0;
+		count = 0;
+	}
+};
+
 // Given a vector consisting of (weight, symbol) pairs, sorted by weight, builds a Huffman tree and returns a pointer to the root.
 // destroy_huffman_tree() should be called if the tree will no longer be used.
 Node* build_huffman_tree(std::vector<std::pair<float, char>> sorted_input) {
@@ -110,22 +137,22 @@ void destroy_huffman_tree(Node* root) {
 	delete(root);
 }
 
-void build_code_map_helper(Node* node, std::string codeword, std::map<char, std::string> &code_map) {
+void build_code_map_helper(Node* node, char codeword_length, short codeword, std::map<char, std::pair<char, short>> &code_map) {
 	if (node == NULL) {
 		return;
 	} else if (node->left_child == NULL && node->right_child == NULL) {
 		LeafNode* leaf_node = static_cast<LeafNode*>(node);
-		code_map[leaf_node->symbol] = codeword;
+		code_map[leaf_node->symbol] = std::make_pair(codeword_length, codeword);
 		return;
 	}
-	build_code_map_helper(node->left_child, codeword + "0", code_map);
-	build_code_map_helper(node->right_child, codeword + "1", code_map); 
+	build_code_map_helper(node->left_child, codeword_length + 1, codeword << 1, code_map);
+	build_code_map_helper(node->right_child, codeword_length + 1, (codeword << 1) + 1, code_map); 
 }
 
-// Builds a map for symbol to codeword, given a pointer to the root of a Huffman tree.
-std::map<char, std::string> build_code_map(Node* root) {
-	std::map<char, std::string> code_map;
-	build_code_map_helper(root, "", code_map);
+// Builds a map from symbol to codeword and codeword length, given a pointer to the root of a Huffman tree.
+std::map<char, std::pair<char, short>> build_code_map(Node* root) {
+	std::map<char, std::pair<char, short>> code_map;
+	build_code_map_helper(root, 0, 0, code_map);
 	return code_map;	
 }
 
@@ -137,12 +164,12 @@ bool compare_symbol(std::pair<float, char> pair1, std::pair<float, char> pair2) 
 
 int main() {
 	// Read the input file and store relative frequencies and symbols in a vector of pairs.
-	std::ifstream input_file("../test/input_text.txt");
-	char symbol;
+	std::ifstream input_file;
+	input_file.open("../test/input_text.txt");
 	std::map<char, int> frequencies;
 	int character_count;
-	while (!input_file.eof()) {
-		input_file.get(symbol);
+	char symbol;
+	while ((symbol = input_file.get()) != EOF) {
 		frequencies[symbol]++;
 		character_count++;
 	}
@@ -157,20 +184,27 @@ int main() {
 	std::sort(symbols_sorted_by_weight.begin(), symbols_sorted_by_weight.end());
 
 	Node* root = build_huffman_tree(symbols_sorted_by_weight);
-	std::map<char, std::string> code_map = build_code_map(root);
+	std::map<char, std::pair<char, short>> code_map = build_code_map(root);
 	destroy_huffman_tree(root);
 
 	// Encode each symbol.
-	std::ifstream input_file2("../test/input_text.txt");
-	std::ofstream output_file("output.txt");
-	std::string codeword;
-	while (!input_file2.eof()) {
-		input_file2.get(symbol);
-		codeword = code_map[symbol];
-		output_file << codeword;
+	input_file.open("../test/input_text.txt");
+	OutputBuffer output_buffer;
+	output_buffer.file.open("output.txt");
+	char codeword_length;
+	short codeword;
+	while ((symbol = input_file.get()) != EOF) {
+		std::cout << symbol;
+		codeword = code_map[symbol].second;
+		codeword_length = code_map[symbol].first;
+		for (int i = 0; i < codeword_length; i++) {
+			char bit = codeword & (1 << (codeword_length - i - 1));
+			output_buffer.write_bit(bit);
+		}
 	}
-	input_file2.close();
-	output_file.close();
+	input_file.close();
+	output_buffer.dump_buffer();
+	output_buffer.file.close();
 	std::cout << "The compressed file has been saved in \"output.txt\".\n";
 
 }
