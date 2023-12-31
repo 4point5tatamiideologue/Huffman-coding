@@ -30,6 +30,7 @@ struct InternalNode : Node {
 	}
 };
 
+// A buffer where individual bits are stored until a whole byte can be written to the file.
 struct OutputBuffer {
     std::ofstream file;
     char buffer = 0;
@@ -188,13 +189,20 @@ int main() {
 	destroy_huffman_tree(root);
 
 	// Encode each symbol.
-	input_file.open("../test/input_text.txt");
 	OutputBuffer output_buffer;
-	output_buffer.file.open("output.txt");
+	output_buffer.file.open("output.txt", std::ios::binary);
+	// Writing the header
+	int number_of_unique_symbols = frequencies.size();
+	output_buffer.file.write((char *) &number_of_unique_symbols, 4);
+	for (auto const& [symbol, frequency] : frequencies) {
+		output_buffer.file << symbol << ',';
+		output_buffer.file.write((char *) &frequency, 4);
+	}
 	char codeword_length;
 	short codeword;
+	input_file.open("../test/input_text.txt");
+	// Writing the encoded data
 	while ((symbol = input_file.get()) != EOF) {
-		std::cout << symbol;
 		codeword = code_map[symbol].second;
 		codeword_length = code_map[symbol].first;
 		for (int i = 0; i < codeword_length; i++) {
